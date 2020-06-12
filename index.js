@@ -10,31 +10,24 @@ var getTables = async (knex, schema) => {
 		.orderBy('table_name');
 }
 
-exports.toJSON = async (connection, schema) => {
+exports.toJSON = async (connection, schema, toExport) => {
+	
 	var knex = require('knex')({client: 'pg', connection: connection});
 	var tables = await getTables(knex, schema);
-	return Promise.all(tables.map(table => {
-		return knex.select('*').from("page")
-		.then(function (rows) {
-
-			var name = table.table_name;
-			name = name.substring(0, name.length - 1);
-
-			return _.map(rows, function(row){
-				return {
-					model: name,
-					data: _.mapValues(row, function (value, key) {
-						if (_.isArray(value)) {
-							return "'" + new Buffer(value).toString('hex') + "'::bytea";
-						}
-						return value;
-					})
-				}
-			});
-
+	if (toExport.length != 0 || toExport != null || toExport != undefined ) {
+  	var tables = tables.filter(table => toExport.indexOf(table.table_name) != -1)
+	}
+	var obj = {}
+	return new Promise( (resolve,reject) => {
+		 tables.forEach(async (table, idx) => {
+			let rows = await knex.select('*').from(table.table_name);
+			console.log(table.table_name);
+			obj[table.table_name] = rows
+			console.log(idx);
+			if (idx === tables.length - 1){ 
+				console.log("HERE")
+				resolve(obj);
+			}
 		});
-	}));
+	});
 }
-
-
-
